@@ -1,0 +1,178 @@
+C51 COMPILER V7.20   PCF8563                                                               01/01/2003 02:37:30 PAGE 1   
+
+
+C51 COMPILER V7.20, COMPILATION OF MODULE PCF8563
+OBJECT MODULE PLACED IN PCF8563.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE PCF8563.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include "Board.h"
+   2          #include "PCF8563.H"
+   3          #include "I2C.H"
+   4          #include "ZLG7290b.h"
+   5          #include "convert.h"
+   6          bit bPCF8563Flag = 0;
+   7          bit bAlarmFlag;//是否设置了报警
+   8          uchar ucAlarmValue[2];
+   9          
+  10          void PCF8563_Init()
+  11          {
+  12   1          char buff[] = 
+  13   1              {
+  14   1                  0x00,//控制状态寄存器1
+  15   1                  0x03,//控制状态寄存器2     0000 0111 
+  16   1                       //控制状态寄存器2 & 1111 1011
+  17   1                       //控制状态寄存器2   0000 0011 
+  18   1                  0x00,//秒:00
+  19   1                  0x30,
+  20   1                  0x08,
+  21   1                  0x25,
+  22   1                  0x01,
+  23   1                  0x05,//月
+  24   1                  0x18,//年
+  25   1                  0x00,//分报警:30  
+  26   1                  0x00,//时报警:6
+  27   1                  0x00,//日报警无效
+  28   1                  0x00,//星期报警无效
+  29   1                  0x83,//CLOCKOUT输出1Hz方波
+  30   1                  0x82,//定时器控制寄存器,设置时钟频率为1Hz 1000 0010
+  31   1                  1       
+  32   1              };
+  33   1      //      I2C_Puts(PCF8563_I2C_ADDR, PCF8563_CONTROL1, 1, buff, 16, 2);
+  34   1              I2C_Puts(PCF8563_I2C_ADDR, PCF8563_CONTROL1, 1, buff, 2, 2);
+  35   1              I2C_Puts(PCF8563_I2C_ADDR, PCF8563_ALARM_MINUTE, 1, &buff[9], 7, 2);
+  36   1      
+  37   1              
+  38   1      }
+  39          
+  40          void Read_PCF8563()
+  41          {
+  42   1          char buff[7];
+  43   1              
+  44   1          I2C_Gets(PCF8563_I2C_ADDR, PCF8563_SECOND, 1, buff, 7, 2);
+  45   1          myDateTime.m_second = ((buff[0] & 0x7F) / 16) * 10 + ((buff[0] & 0x7F) % 16);
+  46   1              
+  47   1          myDateTime.m_minute = ((buff[1] & 0x7F) / 16) * 10 + ((buff[1] & 0x7F) % 16);
+  48   1          myDateTime.m_hour = ((buff[2] & 0x3F) / 16) * 10 + ((buff[2] & 0x3F) % 16);
+  49   1          myDateTime.m_day = ((buff[3] & 0x3F) / 16) * 10 + ((buff[3] & 0x3F) % 16);
+  50   1          myDateTime.m_week = buff[4] & 0x07;//0-6
+  51   1          
+  52   1      /*    if(myDateTime.m_week == 0)
+  53   1              {
+  54   1                  myDateTime.m_week = 8;
+  55   1              }*/
+C51 COMPILER V7.20   PCF8563                                                               01/01/2003 02:37:30 PAGE 2   
+
+  56   1              
+  57   1          myDateTime.m_month = ((buff[5] & 0x1F) / 16) * 10 + ((buff[5] & 0x1F) % 16);
+  58   1      
+  59   1              myDateTime.m_year = ((uchar)buff[6] / 16) * 10 + ((uchar)buff[6] % 16);
+  60   1      
+  61   1              if(buff[5] & 0x80)
+  62   1              {
+  63   2                 myDateTime.m_year += 1900;// 0
+  64   2              }
+  65   1              else
+  66   1              {
+  67   2                 myDateTime.m_year += 2000;
+  68   2              }
+  69   1      
+  70   1              Conversion(0, buff[6], buff[5] & 0x1F, buff[3] & 0x3F);
+  71   1          myDateTime.m_lmonth = (month_moon / 16) * 10 +  (month_moon % 16);
+  72   1              myDateTime.m_lday = (day_moon / 16) * 10  + (day_moon % 16);
+  73   1      }
+  74          
+  75          void WritePCF8563()
+  76          {
+  77   1          uchar buff[7];
+  78   1      
+  79   1              buff[0] = (myDateTime.m_second/ 10) * 16 + (myDateTime.m_second% 10);
+  80   1              buff[0] &= 0x7F;
+  81   1              
+  82   1              buff[1] = (myDateTime.m_minute / 10) * 16 + (myDateTime.m_minute % 10);
+  83   1              buff[1] &= 0x7F;
+  84   1              
+  85   1              buff[2] = (myDateTime.m_hour / 10) * 16 + (myDateTime.m_hour % 10);
+  86   1              buff[2] &= 0x3F;        
+  87   1              
+  88   1              buff[3] = (myDateTime.m_day / 10) * 16 + (myDateTime.m_day % 10);
+  89   1              buff[3] &= 0x3F;        
+  90   1              
+  91   1              buff[4] = myDateTime.m_week;    
+  92   1              buff[5] = (myDateTime.m_month / 10) * 16 + (myDateTime.m_month % 10);
+  93   1              if((myDateTime.m_year / 100) == 19)
+  94   1              {
+  95   2                  buff[5] |= 0x80;
+  96   2              }
+  97   1              else
+  98   1              {
+  99   2                  buff[5] &= 0x7F;    
+ 100   2              }
+ 101   1              
+ 102   1              buff[6] = ((myDateTime.m_year % 100) / 10) * 16 + ((myDateTime.m_year % 100) % 10);
+ 103   1      
+ 104   1              I2C_Puts(PCF8563_I2C_ADDR, PCF8563_SECOND, 1, buff, 7, 2);
+ 105   1              Conversion((bit)(buff[5] & 0x80), buff[6], buff[5] & 0x1F, buff[3] & 0x3F);
+ 106   1          myDateTime.m_lmonth = (month_moon / 16) * 10 +  (month_moon % 16);
+ 107   1              myDateTime.m_lday = (day_moon / 16) * 10  + (day_moon % 16);
+ 108   1              
+ 109   1      }
+ 110          
+ 111          void Read_PCF8563_Alarm()
+ 112          {
+ 113   1          char buff[2];
+ 114   1              
+ 115   1          I2C_Gets(PCF8563_I2C_ADDR, PCF8563_ALARM_MINUTE, 1, buff, 2, 2);
+ 116   1      
+ 117   1              if(((buff[0] & 0x80) == 0) && ((buff[1] & 0x80) == 0))//设置了报警
+C51 COMPILER V7.20   PCF8563                                                               01/01/2003 02:37:30 PAGE 3   
+
+ 118   1              {
+ 119   2                  bAlarmFlag = 1;
+ 120   2              }
+ 121   1              else//没有设置报警
+ 122   1              {
+ 123   2                  bAlarmFlag = 0;     
+ 124   2              }
+ 125   1      
+ 126   1              ucAlarmValue[0] = ((buff[0] & 0x7F) / 16) * 10 + ((buff[0] & 0x7F) % 16);
+ 127   1          ucAlarmValue[1]= ((buff[1] & 0x3F) / 16) * 10 + ((buff[1] & 0x3F) % 16);
+ 128   1      }
+ 129          void Write_PCF8563_Alarm()
+ 130          {
+ 131   1          uchar buff[2];
+ 132   1      
+ 133   1              buff[0] = (ucAlarmValue[0] / 10) * 16 + (ucAlarmValue[0] % 10);
+ 134   1              buff[0] &= 0x7F;
+ 135   1              buff[1] = (ucAlarmValue[1] / 10) * 16 + (ucAlarmValue[1] % 10);
+ 136   1              buff[1] &= 0x3F;        
+ 137   1              I2C_Puts(PCF8563_I2C_ADDR, PCF8563_ALARM_MINUTE, 1, buff, 2, 2);
+ 138   1      }
+ 139          
+ 140          void Cancel_PCF8563_Alarm()
+ 141          {
+ 142   1          uchar buff[2];
+ 143   1      
+ 144   1              buff[0] = (ucAlarmValue[0] / 10) * 16 + (ucAlarmValue[0] % 10);
+ 145   1              buff[0] |= 0x80;
+ 146   1              buff[1] = (ucAlarmValue[1] / 10) * 16 + (ucAlarmValue[1] % 10);
+ 147   1              buff[1] &= 0x3F;
+ 148   1              buff[1] |= 0x80;        
+ 149   1              I2C_Puts(PCF8563_I2C_ADDR, PCF8563_ALARM_MINUTE, 1, buff, 2, 2);
+ 150   1      }
+ 151          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    945    ----
+   CONSTANT SIZE    =     16    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2      36
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

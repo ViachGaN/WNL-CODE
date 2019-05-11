@@ -1,0 +1,7 @@
+"main.obj",
+"I2C.obj",
+"ZLG7290b.obj",
+"PCF8563.obj",
+"Convert.obj" 
+TO "wnl_keil" 
+RAMSIZE(256) 

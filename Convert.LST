@@ -1,0 +1,495 @@
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 1   
+
+
+C51 COMPILER V7.20, COMPILATION OF MODULE CONVERT
+OBJECT MODULE PLACED IN Convert.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE Convert.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          //C51写的公历转农历和星期
+   2          //#define uchar unsigned char
+   3          //#define uint unsigned int
+   4          #include "Board.h"
+   5          /*
+   6          公历年对应的农历数据,每年三字节,
+   7          格式第一字节BIT7-4 位表示闰月月份,值为0 为无闰月,BIT3-0 对应农历第1-4 月的大小
+   8          第二字节BIT7-0 对应农历第5-12 月大小,第三字节BIT7 表示农历第13 个月大小
+   9          月份对应的位为1 表示本农历月大(30 天),为0 表示小(29 天)
+  10          第三字节BIT6-5 表示春节的公历月份,BIT4-0 表示春节的公历日期
+  11          */
+  12          bit c_moon;
+  13          uchar data year_moon,month_moon,day_moon,week;
+  14          
+  15          uchar code year_code[597] = {
+  16                                    0x04,0xAe,0x53,    //1901 0
+  17                                    0x0A,0x57,0x48,    //1902 3
+  18                                    0x55,0x26,0xBd,    //1903 6
+  19                                    0x0d,0x26,0x50,    //1904 9
+  20                                    0x0d,0x95,0x44,    //1905 12
+  21                                    0x46,0xAA,0xB9,    //1906 15
+  22                                    0x05,0x6A,0x4d,    //1907 18
+  23                                    0x09,0xAd,0x42,    //1908 21
+  24                                    0x24,0xAe,0xB6,    //1909
+  25                                    0x04,0xAe,0x4A,    //1910
+  26                                    0x6A,0x4d,0xBe,    //1911
+  27                                    0x0A,0x4d,0x52,    //1912
+  28                                    0x0d,0x25,0x46,    //1913
+  29                                    0x5d,0x52,0xBA,    //1914
+  30                                    0x0B,0x54,0x4e,    //1915
+  31                                    0x0d,0x6A,0x43,    //1916
+  32                                    0x29,0x6d,0x37,    //1917
+  33                                    0x09,0x5B,0x4B,    //1918
+  34                                    0x74,0x9B,0xC1,    //1919
+  35                                    0x04,0x97,0x54,    //1920
+  36                                    0x0A,0x4B,0x48,    //1921
+  37                                    0x5B,0x25,0xBC,    //1922
+  38                                    0x06,0xA5,0x50,    //1923
+  39                                    0x06,0xd4,0x45,    //1924
+  40                                    0x4A,0xdA,0xB8,    //1925
+  41                                    0x02,0xB6,0x4d,    //1926
+  42                                    0x09,0x57,0x42,    //1927
+  43                                    0x24,0x97,0xB7,    //1928
+  44                                    0x04,0x97,0x4A,    //1929
+  45                                    0x66,0x4B,0x3e,    //1930
+  46                                    0x0d,0x4A,0x51,    //1931
+  47                                    0x0e,0xA5,0x46,    //1932
+  48                                    0x56,0xd4,0xBA,    //1933
+  49                                    0x05,0xAd,0x4e,    //1934
+  50                                    0x02,0xB6,0x44,    //1935
+  51                                    0x39,0x37,0x38,    //1936
+  52                                    0x09,0x2e,0x4B,    //1937
+  53                                    0x7C,0x96,0xBf,    //1938
+  54                                    0x0C,0x95,0x53,    //1939
+  55                                    0x0d,0x4A,0x48,    //1940
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 2   
+
+  56                                    0x6d,0xA5,0x3B,    //1941
+  57                                    0x0B,0x55,0x4f,    //1942
+  58                                    0x05,0x6A,0x45,    //1943
+  59                                    0x4A,0xAd,0xB9,    //1944
+  60                                    0x02,0x5d,0x4d,    //1945
+  61                                    0x09,0x2d,0x42,    //1946
+  62                                    0x2C,0x95,0xB6,    //1947
+  63                                    0x0A,0x95,0x4A,    //1948
+  64                                    0x7B,0x4A,0xBd,    //1949
+  65                                    0x06,0xCA,0x51,    //1950
+  66                                    0x0B,0x55,0x46,    //1951
+  67                                    0x55,0x5A,0xBB,    //1952
+  68                                    0x04,0xdA,0x4e,    //1953
+  69                                    0x0A,0x5B,0x43,    //1954
+  70                                    0x35,0x2B,0xB8,    //1955
+  71                                    0x05,0x2B,0x4C,    //1956
+  72                                    0x8A,0x95,0x3f,    //1957
+  73                                    0x0e,0x95,0x52,    //1958
+  74                                    0x06,0xAA,0x48,    //1959
+  75                                    0x7A,0xd5,0x3C,    //1960
+  76                                    0x0A,0xB5,0x4f,    //1961
+  77                                    0x04,0xB6,0x45,    //1962
+  78                                    0x4A,0x57,0x39,    //1963
+  79                                    0x0A,0x57,0x4d,    //1964
+  80                                    0x05,0x26,0x42,    //1965
+  81                                    0x3e,0x93,0x35,    //1966
+  82                                    0x0d,0x95,0x49,    //1967
+  83                                    0x75,0xAA,0xBe,    //1968
+  84                                    0x05,0x6A,0x51,    //1969
+  85                                    0x09,0x6d,0x46,    //1970
+  86                                    0x54,0xAe,0xBB,    //1971
+  87                                    0x04,0xAd,0x4f,    //1972
+  88                                    0x0A,0x4d,0x43,    //1973
+  89                                    0x4d,0x26,0xB7,    //1974
+  90                                    0x0d,0x25,0x4B,    //1975
+  91                                    0x8d,0x52,0xBf,    //1976
+  92                                    0x0B,0x54,0x52,    //1977
+  93                                    0x0B,0x6A,0x47,    //1978
+  94                                    0x69,0x6d,0x3C,    //1979
+  95                                    0x09,0x5B,0x50,    //1980
+  96                                    0x04,0x9B,0x45,    //1981
+  97                                    0x4A,0x4B,0xB9,    //1982
+  98                                    0x0A,0x4B,0x4d,    //1983
+  99                                    0xAB,0x25,0xC2,    //1984
+ 100                                    0x06,0xA5,0x54,    //1985
+ 101                                    0x06,0xd4,0x49,    //1986
+ 102                                    0x6A,0xdA,0x3d,    //1987
+ 103                                    0x0A,0xB6,0x51,    //1988
+ 104                                    0x09,0x37,0x46,    //1989
+ 105                                    0x54,0x97,0xBB,    //1990
+ 106                                    0x04,0x97,0x4f,    //1991
+ 107                                    0x06,0x4B,0x44,    //1992
+ 108                                    0x36,0xA5,0x37,    //1993
+ 109                                    0x0e,0xA5,0x4A,    //1994
+ 110                                    0x86,0xB2,0xBf,    //1995
+ 111                                    0x05,0xAC,0x53,    //1996
+ 112                                    0x0A,0xB6,0x47,    //1997
+ 113                                    0x59,0x36,0xBC,    //1998
+ 114                                    0x09,0x2e,0x50,    //1999 294
+ 115                                    0x0C,0x96,0x45,    //2000 297
+ 116                                    0x4d,0x4A,0xB8,    //2001
+ 117                                    0x0d,0x4A,0x4C,    //2002
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 3   
+
+ 118                                    0x0d,0xA5,0x41,    //2003
+ 119                                    0x25,0xAA,0xB6,    //2004
+ 120                                    0x05,0x6A,0x49,    //2005
+ 121                                    0x7A,0xAd,0xBd,    //2006
+ 122                                    0x02,0x5d,0x52,    //2007
+ 123                                    0x09,0x2d,0x47,    //2008
+ 124                                    0x5C,0x95,0xBA,    //2009
+ 125                                    0x0A,0x95,0x4e,    //2010
+ 126                                    0x0B,0x4A,0x43,    //2011
+ 127                                    0x4B,0x55,0x37,    //2012
+ 128                                    0x0A,0xd5,0x4A,    //2013
+ 129                                    0x95,0x5A,0xBf,    //2014
+ 130                                    0x04,0xBA,0x53,    //2015
+ 131                                    0x0A,0x5B,0x48,    //2016
+ 132                                    0x65,0x2B,0xBC,    //2017
+ 133                                    0x05,0x2B,0x50,    //2018
+ 134                                    0x0A,0x93,0x45,    //2019
+ 135                                    0x47,0x4A,0xB9,    //2020
+ 136                                    0x06,0xAA,0x4C,    //2021
+ 137                                    0x0A,0xd5,0x41,    //2022
+ 138                                    0x24,0xdA,0xB6,    //2023
+ 139                                    0x04,0xB6,0x4A,    //2024
+ 140                                    0x69,0x57,0x3d,    //2025
+ 141                                    0x0A,0x4e,0x51,    //2026
+ 142                                    0x0d,0x26,0x46,    //2027
+ 143                                    0x5e,0x93,0x3A,    //2028
+ 144                                    0x0d,0x53,0x4d,    //2029
+ 145                                    0x05,0xAA,0x43,    //2030
+ 146                                    0x36,0xB5,0x37,    //2031
+ 147                                    0x09,0x6d,0x4B,    //2032
+ 148                                    0xB4,0xAe,0xBf,    //2033
+ 149                                    0x04,0xAd,0x53,    //2034
+ 150                                    0x0A,0x4d,0x48,    //2035
+ 151                                    0x6d,0x25,0xBC,    //2036
+ 152                                    0x0d,0x25,0x4f,    //2037
+ 153                                    0x0d,0x52,0x44,    //2038
+ 154                                    0x5d,0xAA,0x38,    //2039
+ 155                                    0x0B,0x5A,0x4C,    //2040
+ 156                                    0x05,0x6d,0x41,    //2041
+ 157                                    0x24,0xAd,0xB6,    //2042
+ 158                                    0x04,0x9B,0x4A,    //2043
+ 159                                    0x7A,0x4B,0xBe,    //2044
+ 160                                    0x0A,0x4B,0x51,    //2045
+ 161                                    0x0A,0xA5,0x46,    //2046
+ 162                                    0x5B,0x52,0xBA,    //2047
+ 163                                    0x06,0xd2,0x4e,    //2048
+ 164                                    0x0A,0xdA,0x42,    //2049
+ 165                                    0x35,0x5B,0x37,    //2050
+ 166                                    0x09,0x37,0x4B,    //2051
+ 167                                    0x84,0x97,0xC1,    //2052
+ 168                                    0x04,0x97,0x53,    //2053
+ 169                                    0x06,0x4B,0x48,    //2054
+ 170                                    0x66,0xA5,0x3C,    //2055
+ 171                                    0x0e,0xA5,0x4f,    //2056
+ 172                                    0x06,0xB2,0x44,    //2057
+ 173                                    0x4A,0xB6,0x38,    //2058
+ 174                                    0x0A,0xAe,0x4C,    //2059
+ 175                                    0x09,0x2e,0x42,    //2060
+ 176                                    0x3C,0x97,0x35,    //2061
+ 177                                    0x0C,0x96,0x49,    //2062
+ 178                                    0x7d,0x4A,0xBd,    //2063
+ 179                                    0x0d,0x4A,0x51,    //2064
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 4   
+
+ 180                                    0x0d,0xA5,0x45,    //2065
+ 181                                    0x55,0xAA,0xBA,    //2066
+ 182                                    0x05,0x6A,0x4e,    //2067
+ 183                                    0x0A,0x6d,0x43,    //2068
+ 184                                    0x45,0x2e,0xB7,    //2069
+ 185                                    0x05,0x2d,0x4B,    //2070
+ 186                                    0x8A,0x95,0xBf,    //2071
+ 187                                    0x0A,0x95,0x53,    //2072
+ 188                                    0x0B,0x4A,0x47,    //2073
+ 189                                    0x6B,0x55,0x3B,    //2074
+ 190                                    0x0A,0xd5,0x4f,    //2075
+ 191                                    0x05,0x5A,0x45,    //2076
+ 192                                    0x4A,0x5d,0x38,    //2077
+ 193                                    0x0A,0x5B,0x4C,    //2078
+ 194                                    0x05,0x2B,0x42,    //2079
+ 195                                    0x3A,0x93,0xB6,    //2080
+ 196                                    0x06,0x93,0x49,    //2081
+ 197                                    0x77,0x29,0xBd,    //2082
+ 198                                    0x06,0xAA,0x51,    //2083
+ 199                                    0x0A,0xd5,0x46,    //2084
+ 200                                    0x54,0xdA,0xBA,    //2085
+ 201                                    0x04,0xB6,0x4e,    //2086
+ 202                                    0x0A,0x57,0x43,    //2087
+ 203                                    0x45,0x27,0x38,    //2088
+ 204                                    0x0d,0x26,0x4A,    //2089
+ 205                                    0x8e,0x93,0x3e,    //2090
+ 206                                    0x0d,0x52,0x52,    //2091
+ 207                                    0x0d,0xAA,0x47,    //2092
+ 208                                    0x66,0xB5,0x3B,    //2093
+ 209                                    0x05,0x6d,0x4f,    //2094
+ 210                                    0x04,0xAe,0x45,    //2095
+ 211                                    0x4A,0x4e,0xB9,    //2096
+ 212                                    0x0A,0x4d,0x4C,    //2097
+ 213                                    0x0d,0x15,0x41,    //2098
+ 214                                    0x2d,0x92,0xB5,    //2099
+ 215          };
+ 216          ///月份数据表
+ 217          uchar code day_code1[9]={0x0,0x1f,0x3b,0x5a,0x78,0x97,0xb5,0xd4,0xf3};
+ 218          uint code  day_code2[3]={0x111,0x130,0x14e};
+ 219          /*
+ 220          函数功能:输入BCD阳历数据,输出BCD阴历数据(只允许1901-2099年)
+ 221          调用函数示例:Conversion(c_sun,year_sun,month_sun,day_sun)
+ 222          如:计算2004年10月16日Conversion(0,0x04,0x10,0x16);
+ 223          c_sun,year_sun,month_sun,day_sun均为BCD数据,c_sun为世纪标志位,c_sun=0为21世
+ 224          纪,c_sun=1为20世纪
+ 225          调用函数后,原有数据不变,读c_moon,year_moon,month_moon,day_moon得出阴历BCD数据
+ 226          */
+ 227          /*子函数,用于读取数据表中农历月的大月或小月,如果该月为大返回1,为小返回0*/
+ 228          bit get_moon_day(uchar month_p,uint table_addr)// (1, 336)
+ 229          {
+ 230   1              uchar temp;
+ 231   1              
+ 232   1              switch (month_p)
+ 233   1              {
+ 234   2                      case 1:{temp=year_code[table_addr] & 0x08;
+ 235   3                             if (temp==0)return(0);else return(1);}
+ 236   2                      case 2:{temp=year_code[table_addr]&0x04;
+ 237   3                             if (temp==0)return(0);else return(1);}
+ 238   2                      case 3:{temp=year_code[table_addr]&0x02;
+ 239   3                             if (temp==0)return(0);else return(1);}
+ 240   2                      case 4:{temp=year_code[table_addr]&0x01;
+ 241   3                             if (temp==0)return(0);else return(1);}
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 5   
+
+ 242   2                      case 5:{temp=year_code[table_addr+1]&0x80;
+ 243   3                             if (temp==0) return(0);else return(1);}
+ 244   2                      case 6:{temp=year_code[table_addr+1]&0x40;
+ 245   3                             if (temp==0)return(0);else return(1);}
+ 246   2                      case 7:{temp=year_code[table_addr+1]&0x20;
+ 247   3                             if (temp==0)return(0);else return(1);}
+ 248   2                      case 8:{temp=year_code[table_addr+1]&0x10;
+ 249   3                             if (temp==0)return(0);else return(1);}
+ 250   2                      case 9:{temp=year_code[table_addr+1]&0x08;
+ 251   3                             if (temp==0)return(0);else return(1);}
+ 252   2                      case 10:{temp=year_code[table_addr+1]&0x04;
+ 253   3                             if (temp==0)return(0);else return(1);}
+ 254   2                      case 11:{temp=year_code[table_addr+1]&0x02;
+ 255   3                             if (temp==0)return(0);else return(1);}
+ 256   2                      case 12:{temp=year_code[table_addr+1]&0x01;
+ 257   3                             if (temp==0)return(0);else return(1);}
+ 258   2                      case 13:{temp=year_code[table_addr+2]&0x80;
+ 259   3                             if (temp==0)return(0);else return(1);}
+ 260   2              }
+ 261   1      }
+ 262          /*
+ 263          函数功能:输入BCD阳历数据,输出BCD阴历数据(只允许1901-2099年)
+ 264          调用函数示例:Conversion(c_sun,year_sun,month_sun,day_sun)
+ 265          如:计算2004年10月16日Conversion(0,0x04,0x10,0x16);
+ 266          c_sun,year_sun,month_sun,day_sun均为BCD数据,c_sun为世纪标志位,c_sun=0为21世
+ 267          纪,c_sun=1为19世纪
+ 268          调用函数后,原有数据不变,读c_moon,year_moon,month_moon,day_moon得出阴历BCD数据
+ 269          */
+ 270          void Conversion(bit c,uchar year,uchar month,uchar day)
+ 271          {                         //c=0 为21世纪,c=1 为20世纪 输入输出数据均为BCD数据
+ 272   1          uchar temp1,temp2,temp3,month_p;
+ 273   1          uint temp4,table_addr;
+ 274   1          bit flag2,flag_y;
+ 275   1          temp1=year/16;   //BCD->hex 先把数据转换为十六进制 1
+ 276   1          temp2=year%16;  // 3
+ 277   1          year=temp1*10+temp2; //13
+ 278   1          temp1=month/16;
+ 279   1          temp2=month%16;
+ 280   1          month=temp1*10+temp2;// 11
+ 281   1          temp1=day/16;
+ 282   1          temp2=day%16;
+ 283   1          day=temp1*10+temp2; // 4
+ 284   1          //定位数据表地址
+ 285   1          if(c==0)
+ 286   1       {                   
+ 287   2             table_addr=(year+0x64-1)*0x3; //336
+ 288   2          }
+ 289   1          else
+ 290   1       {
+ 291   2              table_addr=(year-1)*0x3;
+ 292   2          }
+ 293   1          //定位数据表地址完成
+ 294   1          //取当年春节所在的公历月份
+ 295   1      
+ 296   1              temp1=year_code[table_addr+2]&0x60; // 0x40 & 0x60 = 0x40
+ 297   1              
+ 298   1          temp1=_cror_(temp1,5); // temp1=0x02
+ 299   1              
+ 300   1          //取当年春节所在的公历月份完成
+ 301   1          //取当年春节所在的公历日
+ 302   1          temp2=year_code[table_addr+2]&0x1f;  // temp2=0x0a
+ 303   1          //取当年春节所在的公历日完成
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 6   
+
+ 304   1          // 计算当年春年离当年元旦的天数,春节只会在公历1月或2月
+ 305   1          if(temp1==0x1)
+ 306   1          {  
+ 307   2              temp3=temp2-1;  
+ 308   2          }  
+ 309   1          else
+ 310   1          {
+ 311   2              temp3=temp2+0x1f-1; // temp3 = 40       
+ 312   2          }
+ 313   1          // 计算当年春年离当年元旦的天数完成
+ 314   1          //计算公历日离当年元旦的天数,为了减少运算,用了两个表
+ 315   1          //day_code1[9],day_code2[3]
+ 316   1          //如果公历月在九月或前,天数会少于0xff,用表day_code1[9],
+ 317   1          //在九月后,天数大于0xff,用表day_code2[3]
+ 318   1          //如输入公历日为8月10日,则公历日离元旦天数为day_code1[8-1]+10-1
+ 319   1          //如输入公历日为11月10日,则公历日离元旦天数为day_code2[11-10]+10-1
+ 320   1          if (month<10)
+ 321   1          { 
+ 322   2              temp4=day_code1[month-1]+day-1;
+ 323   2          }
+ 324   1          else
+ 325   1          {
+ 326   2              temp4=day_code2[month-10]+day-1; // temp4= 0x130 + 4 -1 = 307
+ 327   2          }
+ 328   1          if ((month>0x2)&&(year%0x4==0))
+ 329   1          {  //如果公历月大于2月并且该年的2月为闰月,天数加1
+ 330   2              temp4+=1;
+ 331   2          }
+ 332   1          //计算公历日离当年元旦的天数完成
+ 333   1          //判断公历日在春节前还是春节后
+ 334   1          if (temp4>=temp3)
+ 335   1          { //公历日在春节后或就是春节当日使用下面代码进行运算
+ 336   2              temp4 -= temp3; // temp4 = 267
+ 337   2              month=1;
+ 338   2              month_p=1;  //month_p为月份指向,公历日在春节前或就是春节当日month_p指向首月
+ 339   2              flag2 = get_moon_day(month_p,table_addr);  // flag2 = 1
+ 340   2      //检查该农历月为大小还是小月,大月返回1,小月返回0
+ 341   2              flag_y=0;
+ 342   2              if(flag2==0)temp1=0x1d; //小月29天
+ 343   2              else temp1=0x1e; //大小30天 temp1= 30
+ 344   2              
+ 345   2              temp2=year_code[table_addr] & 0xf0;// temp2=0
+ 346   2              temp2=_cror_(temp2,4);  //从数据表中取该年的闰月月份,如为0则该年无闰月
+ 347   2      
+ 348   2                      while(temp4 >= temp1) // 1 > 30
+ 349   2              {
+ 350   3                  temp4 -= temp1; // temp4 = 1
+ 351   3                  month_p+=1;     // month_p = 10
+ 352   3                  if(month == temp2) // temp2=0
+ 353   3                  {
+ 354   4                                   flag_y=~flag_y;
+ 355   4                                   if(flag_y==0)
+ 356   4                                   month+=1;
+ 357   4                  }
+ 358   3                  else
+ 359   3                                      month+=1;  // month = 10
+ 360   3                  flag2 = get_moon_day(month_p,table_addr);
+ 361   3                  if(flag2==0)  temp1=0x1d;
+ 362   3                  else temp1=0x1e; // temp1 = 30
+ 363   3              }
+ 364   2                      
+ 365   2              day=temp4+1; // day = 2
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 7   
+
+ 366   2          }
+ 367   1          else
+ 368   1          {  //公历日在春节前使用下面代码进行运算
+ 369   2              temp3-=temp4;
+ 370   2              if (year==0x0)
+ 371   2              {
+ 372   3                  year=0x63;c=1;
+ 373   3              }
+ 374   2              else year-=1;
+ 375   2              table_addr-=0x3;
+ 376   2              month=0xc;
+ 377   2              temp2=year_code[table_addr]&0xf0;
+ 378   2              temp2=_cror_(temp2,4);
+ 379   2              if (temp2==0)
+ 380   2                  month_p=0xc; 
+ 381   2              else 
+ 382   2                  month_p=0xd; //
+ 383   2              /*month_p为月份指向,如果当年有闰月,一年有十三个月,月指向13,无闰月指向12*/
+ 384   2              flag_y=0;
+ 385   2              flag2=get_moon_day(month_p,table_addr);
+ 386   2              if(flag2==0)temp1=0x1d;
+ 387   2              else temp1=0x1e;
+ 388   2              while(temp3>temp1)
+ 389   2              {
+ 390   3                  temp3-=temp1;
+ 391   3                  month_p-=1;
+ 392   3                  if(flag_y==0)month-=1;
+ 393   3                  if(month==temp2)flag_y=~flag_y;
+ 394   3                  flag2=get_moon_day(month_p,table_addr);
+ 395   3                  if(flag2==0)temp1=0x1d;
+ 396   3                  else temp1=0x1e;
+ 397   3               }
+ 398   2               day=temp1-temp3+1;
+ 399   2          }
+ 400   1          c_moon=c; //   c_moon= 0             //HEX->BCD ,运算结束后,把数据转换为BCD数据
+ 401   1          temp1=year/10; // 13/10 = 1
+ 402   1          temp1= _crol_(temp1,4); // temp1=0x10
+ 403   1          temp2=year%10; // 13%10 = 3
+ 404   1          year_moon=temp1 | temp2;//year_moon=0x13
+ 405   1          temp1=month/10;
+ 406   1          temp1=_crol_(temp1,4);
+ 407   1          temp2=month%10;
+ 408   1          month_moon=temp1|temp2; // month_moon=0x10
+ 409   1          temp1=day/10;
+ 410   1          temp1=_crol_(temp1,4);
+ 411   1          temp2=day%10;
+ 412   1          day_moon=temp1|temp2;// day_moon=0x02
+ 413   1      }
+ 414          /*函数功能:输入BCD阳历数据,输出BCD星期数据(只允许1901-2099年)
+ 415          调用函数示例:Conver_week(c_sun,year_sun,month_sun,day_sun)
+ 416          如:计算2004年10月16日Conversion(0,0x4,0x10,0x16);
+ 417          c_sun,year_sun,month_sun,day_sun均为BCD数据,c_sun为世纪标志位,c_sun=0为21世
+ 418          纪,c_sun=1为19世纪
+ 419          调用函数后,原有数据不变,读week得出阴历BCD数据
+ 420          */
+ 421          /*code uchar table_week[12]={0,3,3,6,1,4,6,2,5,0,3,5}; //月修正数据表
+ 422          
+ 423          算法:日期+年份+所过闰年数+月较正数之和除7 的余数就是星期但如果是在
+ 424          闰年又不到3 月份上述之和要减一天再除7
+ 425          星期数为0
+ 426          */
+ 427          /*void Conver_week(bit c,uchar year,uchar month,uchar day)
+C51 COMPILER V7.20   CONVERT                                                               01/01/2003 02:37:30 PAGE 8   
+
+ 428          {//c=0 为21世纪,c=1 为19世纪 输入输出数据均为BCD数据
+ 429              uchar temp1,temp2;
+ 430              temp1=year/16;   //BCD->hex 先把数据转换为十六进制
+ 431              temp2=year%16;
+ 432              year=temp1*10+temp2;
+ 433              temp1=month/16;
+ 434              temp2=month%16;
+ 435              month=temp1*10+temp2;
+ 436              temp1=day/16;
+ 437              temp2=day%16;
+ 438              day=temp1*10+temp2;
+ 439              if (c==0){year+=0x64;}  //如果为21世纪,年份数加100
+ 440              temp1=year/0x4;  //所过闰年数只算1900年之后的
+ 441              temp2=year+temp1;
+ 442              temp2=temp2%0x7;  //为节省资源,先进行一次取余,避免数大于0xff,避免使用整型数据
+ 443              temp2=temp2+day+table_week[month-1];
+ 444              if (year%0x4==0&&month<3)temp2-=1;
+ 445              week=temp2%0x7;
+ 446          }
+ 447          //test
+ 448          uchar c_sun,year_sun,month_sun,day_sun;
+ 449          void main()
+ 450          {
+ 451              c_sun=1;
+ 452              year_sun=0x2;
+ 453              month_sun=0x11;
+ 454              day_sun=0x3;
+ 455              Conver_week(c_sun,year_sun,month_sun,day_sun);
+ 456              Conversion(c_sun,year_sun,month_sun,day_sun);
+ 457              while(1);
+ 458          } */
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    895    ----
+   CONSTANT SIZE    =    612    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       3
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,694 @@
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 1   
+
+
+C51 COMPILER V7.20, COMPILATION OF MODULE I2C
+OBJECT MODULE PLACED IN I2C.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE I2C.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /*
+   2                  I2C.c
+   3                  标准80C51单片机模拟I2C总线的主机程序
+   4                  Copyright (c) 2005，广州周立功单片机发展有限公司
+   5                  All rights reserved.
+   6                  本程序仅供学习参考，不提供任何可靠性方面的担保；请勿用于商业目的
+   7          */
+   8          #include "Board.h"
+   9          #include "I2C.h"
+  10          
+  11          //定义延时变量，用于宏I2C_Delay()
+  12          unsigned char data I2C_Delay_t;
+  13          
+  14          /*
+  15          宏定义：I2C_Delay()
+  16          功能：延时，模拟I2C总线专用
+  17          */
+  18          #define I2C_Delay()\
+  19          {\
+  20                  I2C_Delay_t = (I2C_DELAY_VALUE);\
+  21                  while ( --I2C_Delay_t != 0 );\
+  22          }
+  23          
+  24          /*
+  25          函数：I2C_Init()
+  26          功能：I2C总线初始化，使总线处于空闲状态
+  27          说明：在main()函数的开始处，通常应当要执行一次本函数
+  28          */
+  29          void I2C_Init(uchar ch) //  0:zlg7290-1;
+  30                                    // 1:zlg7290-2;
+  31                                    // 2:PCF8563;
+  32          {
+  33   1      //      I2C_SCL = 1;
+  34   1          switch(ch)
+  35   1              {
+  36   2                      case 0:
+  37   2                              Z72901_SCL_PIN = 1;
+  38   2                              break;
+  39   2                      case 1:
+  40   2                              Z72902_SCL_PIN = 1;
+  41   2                              break;
+  42   2                      case 2:
+  43   2                              PCF8563_SCL_PIN = 1;
+  44   2                              break;
+  45   2                      default: break;
+  46   2              }
+  47   1              I2C_Delay();
+  48   1      //      I2C_SDA = 1;
+  49   1      
+  50   1          switch(ch)
+  51   1              {
+  52   2                      case 0:
+  53   2                              Z72901_SDA_PIN = 1;
+  54   2                              break;
+  55   2                      case 1:
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 2   
+
+  56   2                              Z72902_SDA_PIN = 1;
+  57   2                              break;
+  58   2                      case 2:
+  59   2                              PCF8563_SDA_PIN = 1;
+  60   2                              break;
+  61   2                      default: break;
+  62   2              }
+  63   1              I2C_Delay();
+  64   1      }
+  65          
+  66          /*
+  67          函数：I2C_Start()
+  68          功能：产生I2C总线的起始状态
+  69          说明：
+  70                  SCL处于高电平期间，当SDA出现下降沿时启动I2C总线
+  71                  不论SDA和SCL处于什么电平状态，本函数总能正确产生起始状态
+  72                  本函数也可以用来产生重复起始状态
+  73                  本函数执行后，I2C总线处于忙状态
+  74          */
+  75          void I2C_Start(uchar ch)
+  76          {
+  77   1      //      I2C_SDA = 1;
+  78   1          switch(ch)
+  79   1              {
+  80   2                      case 0:
+  81   2                              Z72901_SDA_PIN = 1;
+  82   2                              break;
+  83   2                      case 1:
+  84   2                              Z72902_SDA_PIN = 1;
+  85   2                              break;
+  86   2                      case 2:
+  87   2                              PCF8563_SDA_PIN = 1;
+  88   2                              break;
+  89   2                      default: break;
+  90   2              }
+  91   1      
+  92   1              I2C_Delay();
+  93   1      //      I2C_SCL = 1;
+  94   1          switch(ch)
+  95   1              {
+  96   2                      case 0:
+  97   2                              Z72901_SCL_PIN = 1;
+  98   2                              break;
+  99   2                      case 1:
+ 100   2                              Z72902_SCL_PIN = 1;
+ 101   2                              break;
+ 102   2                      case 2:
+ 103   2                              PCF8563_SCL_PIN = 1;
+ 104   2                              break;
+ 105   2                      default: break;
+ 106   2              }
+ 107   1      
+ 108   1              I2C_Delay();
+ 109   1      //      I2C_SDA = 0;
+ 110   1          switch(ch)
+ 111   1              {
+ 112   2                      case 0:
+ 113   2                              Z72901_SDA_PIN = 0;
+ 114   2                              break;
+ 115   2                      case 1:
+ 116   2                              Z72902_SDA_PIN = 0;
+ 117   2                              break;
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 3   
+
+ 118   2                      case 2:
+ 119   2                              PCF8563_SDA_PIN = 0;
+ 120   2                              break;
+ 121   2                      default: break;
+ 122   2              }
+ 123   1              
+ 124   1              I2C_Delay();
+ 125   1      //      I2C_SCL = 0;
+ 126   1          switch(ch)
+ 127   1              {
+ 128   2                      case 0:
+ 129   2                              Z72901_SCL_PIN = 0;
+ 130   2                              break;
+ 131   2                      case 1:
+ 132   2                              Z72902_SCL_PIN = 0;
+ 133   2                              break;
+ 134   2                      case 2:
+ 135   2                              PCF8563_SCL_PIN = 0;
+ 136   2                              break;
+ 137   2                      default: break;
+ 138   2              }
+ 139   1      
+ 140   1              I2C_Delay();
+ 141   1      }
+ 142          
+ 143          /*
+ 144          函数：I2C_Write()
+ 145          功能：向I2C总线写1个字节的数据
+ 146          参数：
+ 147                  dat：要写到总线上的数据
+ 148          */
+ 149          void I2C_Write(char dat, uchar ch)
+ 150          {
+ 151   1              unsigned char t = 8;
+ 152   1              do
+ 153   1              {
+ 154   2      //              I2C_SDA = (bit)(dat & 0x80);
+ 155   2                  switch(ch)
+ 156   2                      {
+ 157   3                              case 0:
+ 158   3                                      Z72901_SDA_PIN = (bit)(dat & 0x80);
+ 159   3                                      break;
+ 160   3                              case 1:
+ 161   3                                      Z72902_SDA_PIN = (bit)(dat & 0x80);
+ 162   3                                      break;
+ 163   3                              case 2:
+ 164   3                                      PCF8563_SDA_PIN = (bit)(dat & 0x80);
+ 165   3                                      break;
+ 166   3                              default: break;
+ 167   3                      }
+ 168   2      
+ 169   2                      dat <<= 1;
+ 170   2      //              I2C_SCL = 1;
+ 171   2                  switch(ch)
+ 172   2                      {
+ 173   3                              case 0:
+ 174   3                                      Z72901_SCL_PIN = 1;
+ 175   3                                      break;
+ 176   3                              case 1:
+ 177   3                                      Z72902_SCL_PIN = 1;
+ 178   3                                      break;
+ 179   3                              case 2:
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 4   
+
+ 180   3                                      PCF8563_SCL_PIN = 1;
+ 181   3                                      break;
+ 182   3                              default: break;
+ 183   3                      }
+ 184   2      
+ 185   2                      I2C_Delay();
+ 186   2      //              I2C_SCL = 0;
+ 187   2                  switch(ch)
+ 188   2                      {
+ 189   3                              case 0:
+ 190   3                                      Z72901_SCL_PIN = 0;
+ 191   3                                      break;
+ 192   3                              case 1:
+ 193   3                                      Z72902_SCL_PIN = 0;
+ 194   3                                      break;
+ 195   3                              case 2:
+ 196   3                                      PCF8563_SCL_PIN = 0;
+ 197   3                                      break;
+ 198   3                              default: break;
+ 199   3                      }
+ 200   2      
+ 201   2                      I2C_Delay();
+ 202   2              } while ( --t != 0 );
+ 203   1      }
+ 204          
+ 205          /*
+ 206          函数：I2C_Read()
+ 207          功能：从从机读取1个字节的数据
+ 208          返回：读取的一个字节数据
+ 209          */
+ 210          char I2C_Read(uchar ch)
+ 211          {
+ 212   1              char dat;
+ 213   1              unsigned char t = 8;
+ 214   1      //      I2C_SDA = 1;    //在读取数据之前，要把SDA拉高
+ 215   1          switch(ch)
+ 216   1              {
+ 217   2                      case 0:
+ 218   2                              Z72901_SDA_PIN = 1;
+ 219   2                              break;
+ 220   2                      case 1:
+ 221   2                              Z72902_SDA_PIN = 1;
+ 222   2                              break;
+ 223   2                      case 2:
+ 224   2                              PCF8563_SDA_PIN = 1;
+ 225   2                              break;
+ 226   2                      default: break;
+ 227   2              }
+ 228   1      
+ 229   1              do
+ 230   1              {
+ 231   2      //              I2C_SCL = 1;
+ 232   2                  switch(ch)
+ 233   2                      {
+ 234   3                              case 0:
+ 235   3                                      Z72901_SCL_PIN = 1;
+ 236   3                                      break;
+ 237   3                              case 1:
+ 238   3                                      Z72902_SCL_PIN = 1;
+ 239   3                                      break;
+ 240   3                              case 2:
+ 241   3                                      PCF8563_SCL_PIN = 1;
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 5   
+
+ 242   3                                      break;
+ 243   3                              default: break;
+ 244   3                      }
+ 245   2      
+ 246   2                      I2C_Delay();
+ 247   2                      dat <<= 1;
+ 248   2      //              if ( I2C_SDA ) dat |= 0x01;
+ 249   2                  switch(ch)
+ 250   2                      {
+ 251   3                              case 0:
+ 252   3                                      if ( Z72901_SDA_PIN ) dat |= 0x01;
+ 253   3                                      break;
+ 254   3                              case 1:
+ 255   3                                      if ( Z72902_SDA_PIN ) dat |= 0x01;
+ 256   3                                      break;
+ 257   3                              case 2:
+ 258   3                                      if ( PCF8563_SDA_PIN) dat |= 0x01;
+ 259   3                                      break;
+ 260   3                              default: break;
+ 261   3                      }
+ 262   2      
+ 263   2      //              I2C_SCL = 0;
+ 264   2                  switch(ch)
+ 265   2                      {
+ 266   3                              case 0:
+ 267   3                                      Z72901_SCL_PIN = 0;
+ 268   3                                      break;
+ 269   3                              case 1:
+ 270   3                                      Z72902_SCL_PIN = 0;
+ 271   3                                      break;
+ 272   3                              case 2:
+ 273   3                                      PCF8563_SCL_PIN = 0;
+ 274   3                                      break;
+ 275   3                              default: break;
+ 276   3                      }
+ 277   2      
+ 278   2                      I2C_Delay();
+ 279   2              } while ( --t != 0 );
+ 280   1              return dat;
+ 281   1      }
+ 282          
+ 283          /*
+ 284          函数：I2C_GetAck()
+ 285          功能：读取从机应答位
+ 286          返回：
+ 287                  0：从机应答
+ 288                  1：从机非应答
+ 289          说明：
+ 290                  从机在收到每个字节的数据后，要产生应答位
+ 291                  从机在收到最后1个字节的数据后，一般要产生非应答位
+ 292          */
+ 293          bit I2C_GetAck(uchar ch)
+ 294          {
+ 295   1              bit ack;
+ 296   1      //      I2C_SDA = 1;
+ 297   1          switch(ch)
+ 298   1              {
+ 299   2                      case 0:
+ 300   2                              Z72901_SDA_PIN = 1;
+ 301   2                              break;
+ 302   2                      case 1:
+ 303   2                              Z72902_SDA_PIN = 1;
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 6   
+
+ 304   2                              break;
+ 305   2                      case 2:
+ 306   2                              PCF8563_SDA_PIN = 1;
+ 307   2                              break;
+ 308   2                      default: break;
+ 309   2              }
+ 310   1      
+ 311   1              I2C_Delay();
+ 312   1      //      I2C_SCL = 1;
+ 313   1          switch(ch)
+ 314   1              {
+ 315   2                      case 0:
+ 316   2                              Z72901_SCL_PIN = 1;
+ 317   2                              break;
+ 318   2                      case 1:
+ 319   2                              Z72902_SCL_PIN = 1;
+ 320   2                              break;
+ 321   2                      case 2:
+ 322   2                              PCF8563_SCL_PIN = 1;
+ 323   2                              break;
+ 324   2                      default: break;
+ 325   2              }
+ 326   1      
+ 327   1              I2C_Delay();
+ 328   1      //      ack = I2C_SDA;
+ 329   1          switch(ch)
+ 330   1              {
+ 331   2                      case 0:
+ 332   2                              ack = Z72901_SDA_PIN;
+ 333   2                              break;
+ 334   2                      case 1:
+ 335   2                              ack = Z72902_SDA_PIN;
+ 336   2                              break;
+ 337   2                      case 2:
+ 338   2                              ack = PCF8563_SDA_PIN;
+ 339   2                              break;
+ 340   2                      default: break;
+ 341   2              }
+ 342   1      
+ 343   1      //      I2C_SCL = 0;
+ 344   1          switch(ch)
+ 345   1              {
+ 346   2                      case 0:
+ 347   2                              Z72901_SCL_PIN = 0;
+ 348   2                              break;
+ 349   2                      case 1:
+ 350   2                              Z72902_SCL_PIN = 0;
+ 351   2                              break;
+ 352   2                      case 2:
+ 353   2                              PCF8563_SCL_PIN = 0;
+ 354   2                              break;
+ 355   2                      default: break;
+ 356   2              }
+ 357   1      
+ 358   1              I2C_Delay();
+ 359   1              return ack;
+ 360   1      }
+ 361          
+ 362          /*
+ 363          函数：I2C_PutAck()
+ 364          功能：主机产生应答位或非应答位
+ 365          参数：
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 7   
+
+ 366                  ack=0：主机产生应答位
+ 367                  ack=1：主机产生非应答位
+ 368          说明：
+ 369                  主机在接收完每一个字节的数据后，都应当产生应答位
+ 370                  主机在接收完最后一个字节的数据后，应当产生非应答位
+ 371          */
+ 372          void I2C_PutAck(bit ack, uchar ch)
+ 373          {
+ 374   1      //      I2C_SDA = ack;
+ 375   1          switch(ch)
+ 376   1              {
+ 377   2                      case 0:
+ 378   2                              Z72901_SDA_PIN = ack;
+ 379   2                              break;
+ 380   2                      case 1:
+ 381   2                              Z72902_SDA_PIN = ack;
+ 382   2                              break;
+ 383   2                      case 2:
+ 384   2                              PCF8563_SDA_PIN= ack;
+ 385   2                              break;
+ 386   2                      default: break;
+ 387   2              }
+ 388   1              I2C_Delay();
+ 389   1      //      I2C_SCL = 1;
+ 390   1          switch(ch)
+ 391   1              {
+ 392   2                      case 0:
+ 393   2                              Z72901_SCL_PIN = 1;
+ 394   2                              break;
+ 395   2                      case 1:
+ 396   2                              Z72902_SCL_PIN = 1;
+ 397   2                              break;
+ 398   2                      case 2:
+ 399   2                              PCF8563_SCL_PIN = 1;
+ 400   2                              break;
+ 401   2                      default: break;
+ 402   2              }
+ 403   1      
+ 404   1              I2C_Delay();
+ 405   1      //      I2C_SCL = 0;
+ 406   1          switch(ch)
+ 407   1              {
+ 408   2                      case 0:
+ 409   2                              Z72901_SCL_PIN = 0;
+ 410   2                              break;
+ 411   2                      case 1:
+ 412   2                              Z72902_SCL_PIN = 0;
+ 413   2                              break;
+ 414   2                      case 2:
+ 415   2                              PCF8563_SCL_PIN = 0;
+ 416   2                              break;
+ 417   2                      default: break;
+ 418   2              }
+ 419   1      
+ 420   1              I2C_Delay();
+ 421   1      }
+ 422          
+ 423          /*
+ 424          函数：I2C_Stop()
+ 425          功能：产生I2C总线的停止状态
+ 426          说明：
+ 427                  SCL处于高电平期间，当SDA出现上升沿时停止I2C总线
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 8   
+
+ 428                  不论SDA和SCL处于什么电平状态，本函数总能正确产生停止状态
+ 429                  本函数执行后，I2C总线处于空闲状态
+ 430          */
+ 431          void I2C_Stop(uchar ch)
+ 432          {
+ 433   1              unsigned int t = I2C_STOP_WAIT_VALUE;
+ 434   1      //      I2C_SDA = 0;
+ 435   1          switch(ch)
+ 436   1              {
+ 437   2                      case 0:
+ 438   2                              Z72901_SDA_PIN = 0;
+ 439   2                              break;
+ 440   2                      case 1:
+ 441   2                              Z72902_SDA_PIN = 0;
+ 442   2                              break;
+ 443   2                      case 2:
+ 444   2                              PCF8563_SDA_PIN = 0;
+ 445   2                              break;
+ 446   2                      default: break;
+ 447   2              }
+ 448   1      
+ 449   1              I2C_Delay();
+ 450   1      //      I2C_SCL = 1;
+ 451   1          switch(ch)
+ 452   1              {
+ 453   2                      case 0:
+ 454   2                              Z72901_SCL_PIN = 1;
+ 455   2                              break;
+ 456   2                      case 1:
+ 457   2                              Z72902_SCL_PIN = 1;
+ 458   2                              break;
+ 459   2                      case 2:
+ 460   2                              PCF8563_SCL_PIN = 1;
+ 461   2                              break;
+ 462   2                      default: break;
+ 463   2              }
+ 464   1      
+ 465   1              I2C_Delay();
+ 466   1      //      I2C_SDA = 1;
+ 467   1          switch(ch)
+ 468   1              {
+ 469   2                      case 0:
+ 470   2                              Z72901_SDA_PIN = 1;
+ 471   2                              break;
+ 472   2                      case 1:
+ 473   2                              Z72902_SDA_PIN = 1;
+ 474   2                              break;
+ 475   2                      case 2:
+ 476   2                              PCF8563_SDA_PIN = 1;
+ 477   2                              break;
+ 478   2                      default: break;
+ 479   2              }
+ 480   1      
+ 481   1              I2C_Delay();
+ 482   1              while ( --t != 0 );             //在下一次产生Start之前，要加一定的延时
+ 483   1      }
+ 484          
+ 485          /*
+ 486          函数：I2C_Puts()
+ 487          功能：I2C总线综合发送函数，向从机发送多个字节的数据
+ 488          参数：
+ 489                  SlaveAddr：从机地址（7位纯地址，不含读写位）
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 9   
+
+ 490                  SubAddr：从机的子地址
+ 491                  SubMod：子地址模式，0－无子地址，1－单字节子地址，2－双字节子地址
+ 492                  *dat：要发送的数据
+ 493                  Size：数据的字节数
+ 494          返回：
+ 495                  0：发送成功
+ 496                  1：在发送过程中出现异常
+ 497          说明：
+ 498                  本函数能够很好地适应所有常见的I2C器件，不论其是否有子地址
+ 499                  当从机没有子地址时，参数SubAddr任意，而SubMod应当为0
+ 500          */
+ 501          bit I2C_Puts
+ 502          (
+ 503                  unsigned char SlaveAddr,
+ 504                  unsigned int SubAddr,
+ 505                  unsigned char SubMod,
+ 506                  char *dat,
+ 507                  unsigned int Size,
+ 508                  uchar ch
+ 509          )
+ 510          {
+ 511   1      //定义临时变量
+ 512   1              unsigned char i;
+ 513   1              char a[3];
+ 514   1      //检查长度
+ 515   1              if ( Size == 0 ) return 0;
+ 516   1      //准备从机地址
+ 517   1              a[0] = (SlaveAddr << 1);
+ 518   1      //检查子地址模式
+ 519   1              if ( SubMod > 2 ) SubMod = 2;
+ 520   1      //确定子地址
+ 521   1              switch ( SubMod )
+ 522   1              {
+ 523   2              case 0:
+ 524   2                      break;
+ 525   2              case 1:
+ 526   2                      a[1] = (char)(SubAddr);
+ 527   2                      break;
+ 528   2              case 2:
+ 529   2                      a[1] = (char)(SubAddr >> 8);
+ 530   2                      a[2] = (char)(SubAddr);
+ 531   2                      break;
+ 532   2              default:
+ 533   2                      break;
+ 534   2              }
+ 535   1      //发送从机地址，接着发送子地址（如果有子地址的话）
+ 536   1              SubMod++;
+ 537   1              I2C_Start(ch);
+ 538   1              for ( i=0; i<SubMod; i++ )
+ 539   1              {
+ 540   2                      I2C_Write(a[i],ch);
+ 541   2                      if ( I2C_GetAck(ch) )
+ 542   2                      {
+ 543   3                              I2C_Stop(ch);
+ 544   3                              return 1;
+ 545   3                      }
+ 546   2              }
+ 547   1      //发送数据
+ 548   1              do
+ 549   1              {
+ 550   2                      I2C_Write(*dat++,ch);
+ 551   2                      if ( I2C_GetAck(ch) ) break;
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 10  
+
+ 552   2              } while ( --Size != 0 );
+ 553   1      //发送完毕，停止I2C总线，并返回结果
+ 554   1              I2C_Stop(ch);
+ 555   1              if ( Size == 0 )
+ 556   1              {
+ 557   2                      return 0;
+ 558   2              }
+ 559   1              else
+ 560   1              {
+ 561   2                      return 1;
+ 562   2              }
+ 563   1      }
+ 564          
+ 565          /*
+ 566          函数：I2C_Gets()
+ 567          功能：I2C总线综合接收函数，从从机接收多个字节的数据
+ 568          参数：
+ 569                  SlaveAddr：从机地址（7位纯地址，不含读写位）
+ 570                  SubAddr：从机的子地址
+ 571                  SubMod：子地址模式，0－无子地址，1－单字节子地址，2－双字节子地址
+ 572                  *dat：保存接收到的数据
+ 573                  Size：数据的字节数
+ 574          返回：
+ 575                  0：接收成功
+ 576                  1：在接收过程中出现异常
+ 577          说明：
+ 578                  本函数能够很好地适应所有常见的I2C器件，不论其是否有子地址
+ 579                  当从机没有子地址时，参数SubAddr任意，而SubMod应当为0
+ 580          */
+ 581          bit I2C_Gets
+ 582          (
+ 583                  unsigned char SlaveAddr,
+ 584                  unsigned int SubAddr,
+ 585                  unsigned char SubMod,
+ 586                  char *dat,
+ 587                  unsigned int Size,
+ 588                  uchar ch
+ 589          
+ 590          )
+ 591          {
+ 592   1      //定义临时变量
+ 593   1              unsigned char i;
+ 594   1              char a[3];
+ 595   1      //检查长度
+ 596   1              if ( Size == 0 ) return 0;
+ 597   1      //准备从机地址
+ 598   1              a[0] = (SlaveAddr << 1);
+ 599   1      //检查子地址模式
+ 600   1              if ( SubMod > 2 ) SubMod = 2;
+ 601   1      //如果是有子地址的从机，则要先发送从机地址和子地址
+ 602   1              if ( SubMod != 0 )
+ 603   1              {
+ 604   2              //确定子地址
+ 605   2                      if ( SubMod == 1 )
+ 606   2                      {
+ 607   3                              a[1] = (char)(SubAddr);
+ 608   3                      }
+ 609   2                      else
+ 610   2                      {
+ 611   3                              a[1] = (char)(SubAddr >> 8);
+ 612   3                              a[2] = (char)(SubAddr);
+ 613   3                      }
+C51 COMPILER V7.20   I2C                                                                   01/01/2003 02:37:30 PAGE 11  
+
+ 614   2              //发送从机地址，接着发送子地址
+ 615   2                      SubMod++;
+ 616   2                      I2C_Start(ch);
+ 617   2                      for ( i=0; i<SubMod; i++ )
+ 618   2                      {
+ 619   3                              I2C_Write(a[i],ch);
+ 620   3                              if ( I2C_GetAck(ch) )
+ 621   3                              {
+ 622   4                                      I2C_Stop(ch);
+ 623   4                                      return 1;
+ 624   4                              }
+ 625   3                      }
+ 626   2              }
+ 627   1      //这里的I2C_Start()对于有子地址的从机是重复起始状态
+ 628   1      //对于无子地址的从机则是正常的起始状态
+ 629   1              I2C_Start(ch);
+ 630   1      //发送从机地址
+ 631   1              I2C_Write(a[0]+1,ch);
+ 632   1              if ( I2C_GetAck(ch) )
+ 633   1              {
+ 634   2                      I2C_Stop(ch);
+ 635   2                      return 1;
+ 636   2              }
+ 637   1      //接收数据
+ 638   1              for (;;)
+ 639   1              {
+ 640   2                      *dat++ = I2C_Read(ch);
+ 641   2                      if ( --Size == 0 )
+ 642   2                      {
+ 643   3                              I2C_PutAck(1,ch);
+ 644   3                              break;
+ 645   3                      }
+ 646   2                      I2C_PutAck(0,ch);
+ 647   2              }
+ 648   1      //接收完毕，停止I2C总线，并返回结果
+ 649   1              I2C_Stop(ch);
+ 650   1              return 0;
+ 651   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    958    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1      27
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

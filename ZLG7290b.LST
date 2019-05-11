@@ -1,0 +1,364 @@
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 1   
+
+
+C51 COMPILER V7.20, COMPILATION OF MODULE ZLG7290B
+OBJECT MODULE PLACED IN ZLG7290b.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ZLG7290b.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /*
+   2                  ZLG7290.c
+   3                  数码管显示与键盘管理芯片ZLG7290的标准80C51驱动程序C文件
+   4                  Copyright (c) 2005，广州周立功单片机发展有限公司
+   5                  All rights reserved.
+   6                  本程序仅供学习参考，不提供任何可靠性方面的担保；请勿用于商业目的
+   7          */
+   8          #include "Board.h"
+   9          
+  10          #include "I2C.h"
+  11          #include "ZLG7290b.h"
+  12          TDATETIME myDateTime={2018,6,25,8,27,40,1,5,12};
+  13          bit bZlg7290Flag = 0;
+  14          uchar uKeyValue = 0;
+  15          /*
+  16          函数：ZLG7290_WriteReg()
+  17          功能：向ZLG7290的某个内部寄存器写入数据
+  18          参数：
+  19                  RegAddr：ZLG7290的内部寄存器地址
+  20                  dat：要写入的数据
+  21          返回：
+  22                  0：正常
+  23                  1：访问ZLG7290时出现异常
+  24          */
+  25          bit ZLG7290_WriteReg(unsigned char RegAddr, char dat,uchar ch)
+  26          {
+  27   1              bit b;
+  28   1              b = I2C_Puts(ZLG7290_I2C_ADDR,RegAddr,1,&dat,1,ch);
+  29   1              return b;
+  30   1      }
+  31          
+  32          /*
+  33          函数：ZLG7290_ReadReg()
+  34          功能：从ZLG7290的某个内部寄存器读出数据
+  35          参数：
+  36                  RegAddr：ZLG7290的内部寄存器地址
+  37                  *dat：保存读出的数据
+  38          返回：
+  39                  0：正常
+  40                  1：访问ZLG7290时出现异常
+  41          */
+  42          bit ZLG7290_ReadReg(unsigned char RegAddr, char *dat,uchar ch)
+  43          {
+  44   1              bit b;
+  45   1              b = I2C_Gets(ZLG7290_I2C_ADDR,RegAddr,1,dat,1,ch);
+  46   1              return b;
+  47   1      }
+  48          
+  49          /*
+  50          函数：ZLG7290_cmd()
+  51          功能：向ZLG7290发送控制命令
+  52          参数：
+  53                  cmd0：写入CmdBuf0寄存器的命令字（第1字节）
+  54                  cmd1：写入CmdBuf1寄存器的命令字（第2字节）
+  55          返回：
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 2   
+
+  56                  0：正常
+  57                  1：访问ZLG7290时出现异常
+  58          */
+  59          bit ZLG7290_cmd(char cmd0, char cmd1,uchar ch)
+  60          {
+  61   1              bit b;
+  62   1              char buf[2];
+  63   1              buf[0] = cmd0;
+  64   1              buf[1] = cmd1;
+  65   1              b = I2C_Puts(ZLG7290_I2C_ADDR,ZLG7290_CmdBuf,1,buf,2,ch);
+  66   1              return b;
+  67   1      }
+  68          
+  69          /*
+  70          函数：ZLG7290_SegOnOff()
+  71          功能：段寻址，单独点亮或熄灭数码管（或LED）中的某一段
+  72          参数：
+  73                  seg：取值0～63，表示数码管（或LED）的段号
+  74                  b：0表示熄灭，1表示点亮
+  75          返回：
+  76                  0：正常
+  77                  1：访问ZLG7290时出现异常
+  78          说明：
+  79                  在每一位数码管中，段号顺序按照“a,b,c,d,e,f,g,dp”进行
+  80          */
+  81          bit ZLG7290_SegOnOff(char seg, bit b,uchar ch)
+  82          {
+  83   1              char cmd;
+  84   1              cmd = seg & 0x3F;
+  85   1              if ( b ) cmd |= 0x80;
+  86   1              return ZLG7290_cmd(0x01,cmd,ch);
+  87   1      }
+  88          
+  89          /*
+  90          函数：ZLG7290_Download()
+  91          功能：下载数据并译码
+  92          参数：
+  93                  addr：取值0～7，显示缓存DpRam0～DpRam7的编号
+  94                  dp：是否点亮该位的小数点，0－熄灭，1－点亮
+  95                  flash：控制该位是否闪烁，0－不闪烁，1－闪烁
+  96                  dat：取值0～31，表示要显示的数据
+  97          返回：
+  98                  0：正常
+  99                  1：访问ZLG7290时出现异常
+ 100          说明：
+ 101                  显示数据具体的译码方式请参见ZLG7290的数据手册
+ 102          */
+ 103          bit ZLG7290_Download(char addr, bit dp, bit flash, char dat,uchar ch)
+ 104          {
+ 105   1              char cmd0;
+ 106   1              char cmd1;
+ 107   1              cmd0 = addr & 0x0F;
+ 108   1              cmd0 |= 0x60;
+ 109   1              cmd1 = dat & 0x1F;
+ 110   1              if ( dp ) cmd1 |= 0x80;
+ 111   1              ZLG7290_Flash(0x18,0);//0001 1000 //年闪烁
+ 112   1              if ( flash ) cmd1 |= 0x40;
+ 113   1              return ZLG7290_cmd(cmd0,cmd1,ch);
+ 114   1      }
+ 115          void SetFlashItem(uchar item)
+ 116          {
+ 117   1              switch(item)
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 3   
+
+ 118   1              {
+ 119   2                      case 0://year flash
+ 120   2                              ZLG7290_Flash(0x00,1);//0000 0100 //闪烁
+ 121   2                              ZLG7290_Flash(0x18,0);//0001 1000 //年闪烁
+ 122   2                              break;
+ 123   2                      case 1://day flash
+ 124   2                              ZLG7290_Flash(0x24,0);//0000 0011 //闪烁
+ 125   2                              break;
+ 126   2                      case 2://month flash
+ 127   2                              ZLG7290_Flash(0x03,0);//0010 0100 //闪烁
+ 128   2                              break;
+ 129   2                      case 3://hour flash
+ 130   2                              ZLG7290_Flash(0xc0,0);//0000 0000 //闪烁
+ 131   2                              break;
+ 132   2                      case 4://minute flash
+ 133   2                              ZLG7290_Flash(0x00,0);//0000 0000 //闪烁
+ 134   2                              ZLG7290_Flash(0x03,1);//0000 0011 //闪烁
+ 135   2                              break;
+ 136   2                      case 5://week flash
+ 137   2                              ZLG7290_Flash(0x18,1);//0001 1000 //闪烁
+ 138   2                              break;
+ 139   2                      case 6://week flash
+ 140   2                              ZLG7290_Flash(0x04,1);//0000 0100 //闪烁
+ 141   2                              break;
+ 142   2                      default: break;
+ 143   2              }
+ 144   1      }
+ 145          
+ 146          uchar GetMonthDays(uint year, uchar month)
+ 147          {
+ 148   1              switch(month)
+ 149   1              {
+ 150   2                      case 1:
+ 151   2                      case 3:
+ 152   2                      case 5:
+ 153   2                      case 7:
+ 154   2                      case 8:
+ 155   2                      case 10:
+ 156   2                      case 12:
+ 157   2                              return 31;
+ 158   2                      case 4:
+ 159   2                      case 6:
+ 160   2                      case 9:
+ 161   2                      case 11:
+ 162   2                              return 30;
+ 163   2                      case 2:
+ 164   2                              if(
+ 165   2                                              (((year % 4) == 0) && ((year % 100) != 0))
+ 166   2                                              || ((year % 400) == 0)
+ 167   2                                 )
+ 168   2                                 return 29;
+ 169   2                         else
+ 170   2                                 return 28;
+ 171   2                              
+ 172   2              }
+ 173   1      }
+ 174          void EditDateTime(item)
+ 175          {
+ 176   1          uchar yearHigh = myDateTime.m_year / 100;
+ 177   1          uchar yearLow = myDateTime.m_year % 100;
+ 178   1              uchar days = GetMonthDays(myDateTime.m_year, myDateTime.m_month);
+ 179   1              
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 4   
+
+ 180   1              switch(item)
+ 181   1              {
+ 182   2                      case 0://year flash
+ 183   2                          yearLow++;
+ 184   2                              if(yearLow > 99) yearLow = 0;
+ 185   2                              myDateTime.m_year = yearHigh * 100 + yearLow;
+ 186   2                              break;
+ 187   2                      case 1://day flash
+ 188   2                              myDateTime.m_day++;
+ 189   2                              if(myDateTime.m_day > days)
+ 190   2                                      myDateTime.m_day = 1;
+ 191   2                              break;
+ 192   2                      case 2://month flash
+ 193   2                              myDateTime.m_month++;
+ 194   2                              if(myDateTime.m_month > 12) myDateTime.m_month = 1;
+ 195   2                              break;
+ 196   2                      case 3://hour flash
+ 197   2                              myDateTime.m_hour++;
+ 198   2                              if(myDateTime.m_hour > 23) myDateTime.m_hour= 0;
+ 199   2                              break;
+ 200   2                      case 4://minute flash
+ 201   2                              myDateTime.m_minute++;
+ 202   2                              if(myDateTime.m_minute> 59) myDateTime.m_minute= 0;
+ 203   2                              break;
+ 204   2                              
+ 205   2      case 5:
+ 206   2                              myDateTime.m_second++;
+ 207   2                              if(myDateTime.m_second>59)myDateTime.m_second=0;
+ 208   2                              break;  
+ 209   2                      case 6://week flash
+ 210   2                              myDateTime.m_week++;
+ 211   2                              if(myDateTime.m_week > 7) myDateTime.m_week = 1;
+ 212   2                              break;
+ 213   2                      default: break;
+ 214   2              }
+ 215   1      }
+ 216          void cutDateTime(item)
+ 217          {
+ 218   1          uchar yearHigh = myDateTime.m_year / 100;
+ 219   1          uchar yearLow = myDateTime.m_year % 100;
+ 220   1              uchar days = GetMonthDays(myDateTime.m_year, myDateTime.m_month);
+ 221   1              
+ 222   1              switch(item)
+ 223   1              {
+ 224   2                      case 0://year flash
+ 225   2                          yearLow--;
+ 226   2                              if(yearLow <0) yearLow = 99;
+ 227   2                              myDateTime.m_year = yearHigh * 100 + yearLow;
+ 228   2                              break;
+ 229   2                      case 1://day flash
+ 230   2                              myDateTime.m_day--;
+ 231   2                              if(myDateTime.m_day < 1)
+ 232   2                                      myDateTime.m_day = days;
+ 233   2                              break;
+ 234   2                      case 2://month flash
+ 235   2                              myDateTime.m_month--;
+ 236   2                              if(myDateTime.m_month < 1) myDateTime.m_month = 12;
+ 237   2                              break;
+ 238   2                      case 3://hour flash
+ 239   2                              myDateTime.m_hour--;
+ 240   2                              if(myDateTime.m_hour < 0) myDateTime.m_hour= 23;
+ 241   2                              break;
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 5   
+
+ 242   2                      case 4://minute flash
+ 243   2                              myDateTime.m_minute--;
+ 244   2                              if(myDateTime.m_minute< 0) myDateTime.m_minute= 59;
+ 245   2                              break;
+ 246   2                              
+ 247   2                      case 5:
+ 248   2                              myDateTime.m_second--;
+ 249   2                              if(myDateTime.m_second<0)myDateTime.m_second=59;
+ 250   2                              break;  
+ 251   2                      case 6://week flash
+ 252   2                              myDateTime.m_week--;
+ 253   2                              if(myDateTime.m_week < 1) myDateTime.m_week = 7;
+ 254   2                              break;  
+ 255   2                              
+ 256   2      
+ 257   2      
+ 258   2                      default: break;
+ 259   2              }
+ 260   1      }
+ 261          void Zlg7290_Test()
+ 262          {
+ 263   1      //    Read_PCF8563();
+ 264   1              ZLG7290_Download(3, 0, 0, (myDateTime.m_year % 100) / 10 , 0);//year
+ 265   1              ZLG7290_Download(4, 0, 0, (myDateTime.m_year % 100) % 10 , 0);
+ 266   1              
+ 267   1              ZLG7290_Download(2, 0, 0,  myDateTime.m_day / 10, 0);//day
+ 268   1              ZLG7290_Download(5, 0, 0, myDateTime.m_day % 10, 0);
+ 269   1              
+ 270   1              ZLG7290_Download(1, 0, 0,  myDateTime.m_month / 10 , 0);//month
+ 271   1              ZLG7290_Download(0, 0, 0, myDateTime.m_month % 10, 0);
+ 272   1      
+ 273   1      
+ 274   1      
+ 275   1              ZLG7290_Download(6, 0, 0, myDateTime.m_hour / 10, 0);//hour 
+ 276   1              ZLG7290_Download(7, 0, 0, myDateTime.m_hour % 10, 0);
+ 277   1      
+ 278   1              
+ 279   1              ZLG7290_Download(0, 0, 0, myDateTime.m_minute / 10, 1);//minute
+ 280   1              ZLG7290_Download(1, 0, 0, myDateTime.m_minute % 10, 1);
+ 281   1      
+ 282   1              ZLG7290_Download(3, 0, 0, myDateTime.m_second/ 10, 1);// 11
+ 283   1              ZLG7290_Download(4, 0, 0, myDateTime.m_second% 10, 1);
+ 284   1      
+ 285   1              ZLG7290_Download(5, 0, 0, myDateTime.m_lday / 10, 1);
+ 286   1              ZLG7290_Download(6, 0, 0, myDateTime.m_lday % 10, 1);
+ 287   1      
+ 288   1              ZLG7290_Download(2, 0, 0, myDateTime.m_week, 1);
+ 289   1      //      ZLG7290_Download(7, 0, 0, 9, 1);
+ 290   1      }
+ 291          
+ 292          void SetDataTime()
+ 293          {
+ 294   1          uchar item = 0;
+ 295   1              ZLG7290_Flash(0x18,0);//0001 1000 //年闪烁
+ 296   1              while(1)
+ 297   1              {
+ 298   2                      if(1 == bZlg7290Flag)//有按键被按下
+ 299   2                      {
+ 300   3                          bZlg7290Flag = 0;
+ 301   3                              I2C_Gets(ZLG7290_I2C_ADDR, ZLG7290_Key, 1, &uKeyValue, 1, 0);
+ 302   3                              switch(uKeyValue)
+ 303   3                              {
+C51 COMPILER V7.20   ZLG7290B                                                              01/01/2003 02:37:30 PAGE 6   
+
+ 304   4                                      case 4://按下"设置"键
+ 305   4                                              uKeyValue = 0;
+ 306   4                                             item++;
+ 307   4                                              if(item > 6) item = 0;                                  
+ 308   4                                           SetFlashItem(item);        
+ 309   4                                              break;
+ 310   4                                      case 3://按下"修改"键
+ 311   4                                              uKeyValue = 0;
+ 312   4                                             EditDateTime(item);
+ 313   4                                              Zlg7290_Test();
+ 314   4                                          SetFlashItem(item); 
+ 315   4                                              break;
+ 316   4                                      case 2://按下"定闹"键
+ 317   4                                              uKeyValue=0;
+ 318   4                                              cutDateTime(item);
+ 319   4                                              Zlg7290_Test();
+ 320   4                                              SetFlashItem(item);
+ 321   4                                              break;
+ 322   4                                      case 1://按下"退出"键
+ 323   4                                              ZLG7290_Flash(0x00,0);//0001 1000 //取消闪烁
+ 324   4                                              ZLG7290_Flash(0x00,1);//0001 1000 //取消闪烁
+ 325   4      
+ 326   4                                              return;
+ 327   4                                       default: break;
+ 328   4                              }
+ 329   3                      }
+ 330   2              }
+ 331   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1248    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     11      22
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       6
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
